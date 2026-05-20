@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}View Decrypted File - SecureVault AI{% endblock %}
+
+{% block content %}
+<div class="py-4">
+    <h1 class="fw-bold mb-4"><i class="fas fa-file-check text-success"></i> Decrypted File</h1>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-lg border-0">
+                <div class="card-body p-5">
+                    <!-- File Information -->
+                    <div class="mb-5">
+                        <h5 class="fw-bold mb-3">File Details</h5>
+                        <table class="table table-borderless">
+                            <tbody>
+                                <tr>
+                                    <td class="fw-bold">Original Filename:</td>
+                                    <td><strong>{{ file.original_filename }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">File Size:</td>
+                                    <td>{{ (file.file_size / 1024)|round(2) }} KB</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Upload Date:</td>
+                                    <td>{{ file.upload_date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Encryption Type:</td>
+                                    <td><span class="badge bg-primary">{{ file.encryption_type }}</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Status:</td>
+                                    <td><span class="badge bg-success">Decrypted</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Success Message -->
+                    <div class="alert alert-success mb-4" role="alert">
+                        <i class="fas fa-check-circle"></i> <strong>File Decrypted Successfully!</strong>
+                        <p class="mb-0 mt-2">Your file has been decrypted and is ready for download.</p>
+                    </div>
+
+                    <!-- Download Button -->
+                    <div class="d-grid gap-2 mb-3">
+                        <a href="{{ url_for('encryption.download', file_id=file.id) }}" class="btn btn-primary btn-lg fw-bold">
+                            <i class="fas fa-download"></i> Download File
+                        </a>
+                    </div>
+
+                    <!-- Navigation -->
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary btn-lg fw-bold">
+                            Back to Dashboard
+                        </a>
+                    </div>
+
+                    <!-- Security Notice -->
+                    <div class="alert alert-warning mt-4" role="alert">
+                        <i class="fas fa-shield-alt"></i> <strong>Security Notice:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Decrypted files are temporarily stored on the server</li>
+                            <li>Download your file promptly after decryption</li>
+                            <li>Files are automatically purged after 24 hours</li>
+                            <li>This file remains encrypted in your vault</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

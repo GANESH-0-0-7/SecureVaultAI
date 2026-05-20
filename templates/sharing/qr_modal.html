@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Share via QR Code - SecureVault AI{% endblock %}
+
+{% block content %}
+<div class="qr-share-modal mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-qrcode"></i> Share via QR Code
+                    </h3>
+                </div>
+
+                <div class="card-body p-5 text-center">
+                    <p class="text-muted mb-4">
+                        <i class="fas fa-info-circle"></i>
+                        Share this file securely by scanning the QR code below
+                    </p>
+
+                    <!-- QR Code Placeholder -->
+                    <div class="qr-container mb-4 p-4 bg-light rounded" id="qrContainer">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Generating QR Code...</span>
+                        </div>
+                    </div>
+
+                    <!-- File Info -->
+                    <div class="mb-4 text-start">
+                        <h6 class="fw-bold mb-2">File Details:</h6>
+                        <dl class="small">
+                            <dt class="text-muted">Name:</dt>
+                            <dd>{{ file.original_filename }}</dd>
+                            <dt class="text-muted">Size:</dt>
+                            <dd>{{ (file.file_size / 1024 / 1024) | round(2) }} MB</dd>
+                        </dl>
+                    </div>
+
+                    <!-- QR Configuration -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">QR Code Options</label>
+                        <div class="input-group mb-2">
+                            <input type="number" class="form-control" id="expiryHours" value="24" min="1" max="720">
+                            <span class="input-group-text">Hours</span>
+                        </div>
+                        <small class="text-muted">Set expiry time for the QR code share</small>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex gap-2 flex-column">
+                        <button class="btn btn-primary btn-lg" onclick="downloadQR()">
+                            <i class="fas fa-download"></i> Download QR Code
+                        </button>
+                        <button class="btn btn-outline-primary btn-lg" onclick="copyQRLink()">
+                            <i class="fas fa-link"></i> Copy Share Link
+                        </button>
+                        <button class="btn btn-outline-secondary btn-lg" data-bs-dismiss="modal">
+                            <i class="fas fa-times"></i> Close
+                        </button>
+                    </div>
+
+                    <!-- Share Stats -->
+                    <div class="mt-4 pt-4 border-top text-start">
+                        <small class="text-muted">
+                            <i class="fas fa-shield-alt"></i> This share is end-to-end encrypted
+                            and expires after the set time period
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Generate QR code on load
+document.addEventListener('DOMContentLoaded', generateQRCode);
+
+async function generateQRCode() {
+    try {
+        const response = await fetch("{{ url_for('sharing.generate_qr_api') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                file_id: '{{ file.id }}'
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById('qrContainer').innerHTML = 
+                `<img src="${data.qr_code}" alt="QR Code" class="img-fluid" style="max-width: 300px;">`;
+        } else {
+            document.getElementById('qrContainer').innerHTML = 
+                '<div class="alert alert-danger">Error generating QR code</div>';
+        }
+    } catch (error) {
+        document.getElementById('qrContainer').innerHTML = 
+            '<div class="alert alert-danger">Error: ' + error.message + '</div>';
+    }
+}
+
+function downloadQR() {
+    const canvas = document.querySelector('#qrContainer img');
+    if (canvas) {
+        const link = document.createElement('a');
+        link.href = canvas.src;
+        link.download = 'qr_code.png';
+        link.click();
+    }
+}
+
+function copyQRLink() {
+    const link = window.location.href;
+    navigator.clipboard.writeText(link).then(() => {
+        alert('Share link copied to clipboard!');
+    });
+}
+</script>
+
+<style>
+.qr-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 350px;
+}
+
+.qr-container img {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+</style>
+{% endblock %}

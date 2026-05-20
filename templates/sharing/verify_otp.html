@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Verify OTP - SecureVault AI{% endblock %}
+
+{% block content %}
+<div class="otp-verification mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg border-0">
+                <div class="card-body p-5 text-center">
+                    <!-- Icon -->
+                    <div class="mb-4">
+                        <i class="fas fa-lock fa-4x text-primary"></i>
+                    </div>
+
+                    <h3 class="fw-bold mb-2">Verify Access</h3>
+                    <p class="text-muted mb-4">A one-time password has been sent to verify your access</p>
+
+                    <!-- OTP Form -->
+                    <form method="POST" action="{{ url_for('sharing.verify_otp', share_id=shared_file.id) }}">
+                        <div class="mb-4">
+                            <label for="otp" class="form-label">Enter OTP Code</label>
+                            <input type="text" class="form-control form-control-lg text-center" id="otp" 
+                                   name="otp_code" maxlength="6" placeholder="000000" required 
+                                   pattern="[0-9]{6}" autocomplete="off">
+                            <small class="text-muted d-block mt-2">
+                                <i class="fas fa-clock"></i> Expires in: 
+                                <span id="timer">5:00</span>
+                            </small>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg w-100 mb-3">
+                            <i class="fas fa-check"></i> Verify OTP
+                        </button>
+                    </form>
+
+                    <!-- Additional Options -->
+                    <hr>
+                    <small class="text-muted">
+                        Didn't receive the code?
+                        <a href="#" onclick="resendOTP()" class="text-decoration-none">
+                            <i class="fas fa-redo"></i> Resend OTP
+                        </a>
+                    </small>
+
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            Attempts remaining: <strong>{{ shared_file.max_otp_attempts - shared_file.otp_attempts }}</strong>
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- OTP Info Card -->
+            <div class="card mt-3 border-0 shadow-sm">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3"><i class="fas fa-shield-alt"></i> Security Tips</h6>
+                    <ul class="small mb-0">
+                        <li>Never share your OTP with anyone</li>
+                        <li>OTP expires after 5 minutes</li>
+                        <li>Limited attempts to prevent brute force</li>
+                        <li>All access attempts are logged</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// OTP Timer
+let timeLeft = 300; // 5 minutes
+
+function updateTimer() {
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    document.getElementById('timer').textContent = 
+        `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    
+    if (timeLeft > 0) {
+        timeLeft--;
+        setTimeout(updateTimer, 1000);
+    } else {
+        document.getElementById('timer').innerHTML = '<span class="text-danger">Expired</span>';
+    }
+}
+
+// Auto-focus and format OTP input
+document.getElementById('otp').addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
+    
+    if (e.target.value.length === 6) {
+        // Auto-submit when 6 digits are entered
+        // e.target.closest('form').submit();
+    }
+});
+
+// Resend OTP
+function resendOTP() {
+    const shareId = '{{ shared_file.id }}';
+    fetch(`{{ url_for('sharing.resend_otp_api', share_id='__SHARE_ID__') }}`.replace('__SHARE_ID__', shareId), {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('OTP has been resent');
+            timeLeft = 300;
+            updateTimer();
+        } else {
+            alert('Error resending OTP');
+        }
+    })
+    .catch(error => alert('Error resending OTP'));
+}
+
+// Start timer
+updateTimer();
+</script>
+
+<style>
+.otp-verification .form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.otp-verification .form-control.is-invalid {
+    border-color: #dc3545;
+}
+</style>
+{% endblock %}

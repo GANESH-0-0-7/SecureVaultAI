@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}View Shared File - SecureVault AI{% endblock %}
+
+{% block content %}
+<div class="shared-file-view mt-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <!-- File Header -->
+            <div class="card shadow-lg border-0 mb-4">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="mb-0">
+                            <i class="fas fa-file-shield"></i> Shared File
+                        </h3>
+                        <span class="badge bg-light text-dark">
+                            <i class="fas fa-shield-alt"></i> Secure
+                        </span>
+                    </div>
+                </div>
+
+                <div class="card-body p-4">
+                    <!-- File Details -->
+                    <div class="mb-4">
+                        <h5 class="fw-bold">
+                            <i class="fas fa-file"></i> {{ shared_file.encrypted_file.original_filename }}
+                        </h5>
+                        <small class="text-muted">
+                            <i class="fas fa-user"></i> Shared by: <strong>{{ shared_file.owner.username }}</strong>
+                        </small>
+                    </div>
+
+                    <!-- File Info Grid -->
+                    <div class="row text-center mb-4">
+                        <div class="col-md-3">
+                            <small class="text-muted">File Size</small>
+                            <p class="fw-bold">
+                                {{ (shared_file.encrypted_file.file_size / 1024 / 1024) | round(2) }} MB
+                            </p>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Uploaded</small>
+                            <p class="fw-bold">
+                                {{ shared_file.created_at.strftime('%m/%d/%Y') }}
+                            </p>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Access Mode</small>
+                            <p class="fw-bold">
+                                <span class="badge bg-info">
+                                    {{ shared_file.access_mode | replace('_', ' ') | title }}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Expires</small>
+                            <p class="fw-bold">
+                                {% if shared_file.share_expiry %}
+                                    {{ shared_file.share_expiry.strftime('%m/%d %H:%M') }}
+                                {% else %}
+                                    Never
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Access Restrictions Alert -->
+                    {% if shared_file.access_mode == 'view_only' %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>View Only:</strong> You can only view this file. Download is not permitted.
+                    </div>
+                    {% elif shared_file.access_mode == 'download_only' %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Download Only:</strong> You can download this file.
+                    </div>
+                    {% elif shared_file.access_mode == 'locked' %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-lock"></i>
+                        <strong>Locked:</strong> This file is password protected.
+                    </div>
+                    {% endif %}
+
+                    <!-- Access Count -->
+                    {% if shared_file.max_access_count %}
+                    <div class="alert alert-secondary">
+                        <i class="fas fa-eye"></i>
+                        <strong>Access Limit:</strong> {{ shared_file.access_count }} / {{ shared_file.max_access_count }} accesses used
+                    </div>
+                    {% endif %}
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex gap-2 flex-wrap mt-4">
+                        {% if shared_file.access_mode in ['view_only', 'full_access'] %}
+                        <button class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#previewModal">
+                            <i class="fas fa-eye"></i> View Content
+                        </button>
+                        {% endif %}
+
+                        {% if shared_file.access_mode in ['download_only', 'full_access'] %}
+                        <a href="{{ url_for('sharing.download_shared_file', share_id=shared_file.id) }}" 
+                           class="btn btn-success btn-lg">
+                            <i class="fas fa-download"></i> Download File
+                        </a>
+                        {% endif %}
+
+                        {% if shared_file.access_mode == 'locked' %}
+                        <button class="btn btn-warning btn-lg" data-bs-toggle="modal" data-bs-target="#passwordModal">
+                            <i class="fas fa-key"></i> Unlock File
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Information -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-shield-alt"></i> Security Information</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="small mb-0">
+                        <li><i class="fas fa-check-circle text-success"></i> End-to-end encrypted</li>
+                        <li><i class="fas fa-check-circle text-success"></i> Access logged and monitored</li>
+                        <li><i class="fas fa-check-circle text-success"></i> Secure temporary link</li>
+                        <li><i class="fas fa-check-circle text-success"></i> Expiry protection</li>
+                        <li><i class="fas fa-info-circle text-info"></i> All downloads are recorded</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">File Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    Preview functionality depends on file type. Encrypted files show encrypted content.
+                </div>
+                <div id="previewContent" class="text-center">
+                    <p class="text-muted">
+                        <i class="fas fa-lock fa-3x mb-3"></i><br>
+                        This file is encrypted and cannot be previewed directly.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Password Unlock Modal -->
+<div class="modal fade" id="passwordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-key"></i> Unlock File</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="passwordForm" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="unlockPassword" class="form-label">File Password</label>
+                        <input type="password" class="form-control" id="unlockPassword" 
+                               name="password" required placeholder="Enter file password">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-unlock"></i> Unlock
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('passwordForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    // Implement password verification logic
+    alert('Password verification coming soon');
+});
+</script>
+{% endblock %}

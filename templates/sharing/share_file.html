@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}Share File - SecureVault AI{% endblock %}
+
+{% block content %}
+<div class="sharing-container mt-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-share-alt"></i> Share File Securely
+                    </h3>
+                </div>
+                <div class="card-body p-4">
+                    <!-- File Info -->
+                    <div class="alert alert-info">
+                        <i class="fas fa-file"></i>
+                        <strong>File:</strong> {{ file.original_filename }}
+                        <span class="float-end text-muted">{{ (file.file_size / 1024 / 1024) | round(2) }} MB</span>
+                    </div>
+
+                    <form id="shareForm" method="POST" action="{{ url_for('sharing.share_file', file_id=file.id) }}">
+                        <!-- Sharing Method Selection -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Sharing Method</label>
+                            <div class="sharing-methods">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="share_method" id="method_qrcode" 
+                                           value="qrcode" checked>
+                                    <label class="form-check-label" for="method_qrcode">
+                                        <i class="fas fa-qrcode"></i> QR Code
+                                        <small class="text-muted d-block">Share via animated QR code</small>
+                                    </label>
+                                </div>
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="radio" name="share_method" id="method_otp" 
+                                           value="otp">
+                                    <label class="form-check-label" for="method_otp">
+                                        <i class="fas fa-lock"></i> OTP Verification
+                                        <small class="text-muted d-block">Share with one-time password</small>
+                                    </label>
+                                </div>
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="radio" name="share_method" id="method_user" 
+                                           value="user_id">
+                                    <label class="form-check-label" for="method_user">
+                                        <i class="fas fa-user"></i> Username/Email
+                                        <small class="text-muted d-block">Share with specific user</small>
+                                    </label>
+                                </div>
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="radio" name="share_method" id="method_link" 
+                                           value="link">
+                                    <label class="form-check-label" for="method_link">
+                                        <i class="fas fa-link"></i> Temporary Link
+                                        <small class="text-muted d-block">Share via secure temporary link</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recipient Identifier (for user_id method) -->
+                        <div class="mb-4" id="recipientField" style="display: none;">
+                            <label for="recipient" class="form-label fw-bold">Recipient Username or Email</label>
+                            <input type="text" class="form-control" id="recipient" name="recipient_identifier" 
+                                   placeholder="Enter username or email">
+                        </div>
+
+                        <!-- Access Mode -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Access Mode</label>
+                            <select class="form-select" name="access_mode" required>
+                                <option value="view_only">View Only (Read-Only Access)</option>
+                                <option value="download_only">Download Only</option>
+                                <option value="full_access">Full Access</option>
+                                <option value="locked">Locked (Requires Password)</option>
+                            </select>
+                            <small class="text-muted d-block mt-2">
+                                Define what actions the recipient can perform
+                            </small>
+                        </div>
+
+                        <!-- Share Expiry -->
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <label for="expiry" class="form-label fw-bold">Share Expiry</label>
+                                <select class="form-select" id="expiry" name="share_expiry_hours" required>
+                                    <option value="1">1 Hour</option>
+                                    <option value="24" selected>24 Hours</option>
+                                    <option value="72">3 Days</option>
+                                    <option value="168">1 Week</option>
+                                    <option value="720">1 Month</option>
+                                    <option value="0">No Expiry</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6 mb-4">
+                                <label for="maxAccess" class="form-label fw-bold">Max Access Count</label>
+                                <input type="number" class="form-control" id="maxAccess" name="max_access_count" 
+                                       placeholder="Leave empty for unlimited" min="1">
+                                <small class="text-muted d-block">Limit how many times file can be accessed</small>
+                            </div>
+                        </div>
+
+                        <!-- Security Options -->
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="trackAccess" 
+                                       name="track_access" checked>
+                                <label class="form-check-label" for="trackAccess">
+                                    <i class="fas fa-eye"></i> Track Access & Download Activity
+                                </label>
+                            </div>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="notifyOnAccess" 
+                                       name="notify_on_access" checked>
+                                <label class="form-check-label" for="notifyOnAccess">
+                                    <i class="fas fa-bell"></i> Notify Me When Accessed
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg flex-grow-1">
+                                <i class="fas fa-share"></i> Create Share
+                            </button>
+                            <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary btn-lg">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Share Preview -->
+            <div class="card mt-4 shadow-sm border-0" style="display: none;" id="sharePreview">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-check-circle"></i> Share Created Successfully</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div id="shareContent"></div>
+                    <div class="mt-3 d-flex gap-2">
+                        <button class="btn btn-outline-primary" onclick="copyToClipboard('#shareLink')">
+                            <i class="fas fa-copy"></i> Copy Link
+                        </button>
+                        <button class="btn btn-outline-success" onclick="downloadQR()">
+                            <i class="fas fa-download"></i> Download QR
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('shareForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    
+    try {
+        const response = await fetch("{{ url_for('sharing.share_file', file_id=file.id) }}", {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            displaySharePreview(data);
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error creating share');
+    }
+});
+
+// Show/hide recipient field based on sharing method
+document.querySelectorAll('input[name="share_method"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+        const recipientField = document.getElementById('recipientField');
+        recipientField.style.display = e.target.value === 'user_id' ? 'block' : 'none';
+    });
+});
+
+function displaySharePreview(data) {
+    const preview = document.getElementById('sharePreview');
+    let content = '<h5>Share Details:</h5>';
+    
+    if (data.qr_code) {
+        content += `<img src="${data.qr_code}" alt="QR Code" style="max-width: 300px;" class="mb-3">`;
+    }
+    
+    if (data.otp) {
+        content += `<p><strong>One-Time Password (OTP):</strong> <code>${data.otp}</code></p>`;
+    }
+    
+    if (data.link) {
+        content += `<p><strong>Share Link:</strong> <input type="text" id="shareLink" class="form-control" value="${window.location.origin}${data.link}" readonly></p>`;
+    }
+    
+    document.getElementById('shareContent').innerHTML = content;
+    preview.style.display = 'block';
+}
+
+function copyToClipboard(selector) {
+    const element = document.querySelector(selector);
+    element.select();
+    document.execCommand('copy');
+    alert('Link copied to clipboard!');
+}
+
+function downloadQR() {
+    // Download QR code logic
+    alert('QR code download feature coming soon!');
+}
+</script>
+
+<style>
+.sharing-methods {
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.sharing-methods .form-check {
+    padding: 10px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+}
+
+.sharing-methods .form-check:hover {
+    border-color: #0d6efd;
+    background: #f0f7ff;
+}
+</style>
+{% endblock %}

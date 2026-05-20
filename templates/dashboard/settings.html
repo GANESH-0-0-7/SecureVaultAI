@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - SecureVault AI{% endblock %}
+
+{% block content %}
+<div class="py-4">
+    <h1 class="fw-bold mb-4"><i class="fas fa-cog"></i> Settings</h1>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <!-- Theme Settings -->
+            <div class="card shadow-lg border-0 mb-4">
+                <div class="card-header bg-light border-bottom">
+                    <h5 class="mb-0"><i class="fas fa-palette"></i> Theme Settings</h5>
+                </div>
+                <div class="card-body p-5">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Color Theme</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="theme" id="lightTheme" value="light" checked>
+                            <label class="btn btn-outline-primary" for="lightTheme">
+                                <i class="fas fa-sun"></i> Light
+                            </label>
+
+                            <input type="radio" class="btn-check" name="theme" id="darkTheme" value="dark">
+                            <label class="btn btn-outline-primary" for="darkTheme">
+                                <i class="fas fa-moon"></i> Dark
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Settings -->
+            <div class="card shadow-lg border-0 mb-4">
+                <div class="card-header bg-light border-bottom">
+                    <h5 class="mb-0"><i class="fas fa-shield-alt"></i> Security Settings</h5>
+                </div>
+                <div class="card-body p-5">
+                    <p class="text-muted mb-3">Manage your account security and login sessions</p>
+
+                    <button class="btn btn-warning w-100 mb-2">
+                        <i class="fas fa-key"></i> Change Password
+                    </button>
+
+                    <button class="btn btn-info w-100 mb-2">
+                        <i class="fas fa-wifi"></i> Active Sessions
+                    </button>
+
+                    <button class="btn btn-secondary w-100">
+                        <i class="fas fa-history"></i> Login History
+                    </button>
+                </div>
+            </div>
+
+            <!-- Privacy Settings -->
+            <div class="card shadow-lg border-0 mb-4">
+                <div class="card-header bg-light border-bottom">
+                    <h5 class="mb-0"><i class="fas fa-lock"></i> Privacy Settings</h5>
+                </div>
+                <div class="card-body p-5">
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="emailNotifications" checked>
+                        <label class="form-check-label" for="emailNotifications">
+                            Receive security notifications via email
+                        </label>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="dataCollection">
+                        <label class="form-check-label" for="dataCollection">
+                            Allow analytics to improve the platform
+                        </label>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="newsletter">
+                        <label class="form-check-label" for="newsletter">
+                            Subscribe to product updates and security alerts
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Danger Zone -->
+            <div class="card shadow-lg border-0 border-danger mb-4">
+                <div class="card-header bg-danger bg-opacity-10 border-danger">
+                    <h5 class="mb-0 text-danger"><i class="fas fa-exclamation-triangle"></i> Danger Zone</h5>
+                </div>
+                <div class="card-body p-5">
+                    <p class="text-muted mb-3">These actions are permanent and cannot be undone</p>
+
+                    <button class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        <i class="fas fa-trash"></i> Delete Account
+                    </button>
+                </div>
+            </div>
+
+            <!-- Save Button -->
+            <div class="d-grid gap-2">
+                <button class="btn btn-success btn-lg fw-bold" onclick="saveSettings()">
+                    <i class="fas fa-save"></i> Save Settings
+                </button>
+                <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary btn-lg fw-bold">
+                    Cancel
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Account Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-danger">
+                <h5 class="modal-title text-danger">Delete Account</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-danger fw-bold mb-3">Warning: This action cannot be undone!</p>
+                <p>Deleting your account will:</p>
+                <ul>
+                    <li>Permanently remove all your encrypted files</li>
+                    <li>Delete all password analyses</li>
+                    <li>Remove all account data</li>
+                </ul>
+                <p class="text-muted">Type your username to confirm deletion:</p>
+                <input type="text" class="form-control" id="confirmUsername" placeholder="Type your username">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDelete()">Delete My Account</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function saveSettings() {
+        const theme = document.querySelector('input[name="theme"]:checked').value;
+        localStorage.setItem('theme', theme);
+        alert('Settings saved successfully!');
+    }
+
+    function confirmDelete() {
+        const username = document.getElementById('confirmUsername').value;
+        if (username === '{{ current_user.username }}') {
+            alert('Account deleted! (Demo mode - not actually deleted)');
+        } else {
+            alert('Username does not match');
+        }
+    }
+
+    // Load saved theme
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.getElementById(savedTheme + 'Theme').checked = true;
+</script>
+{% endblock %}

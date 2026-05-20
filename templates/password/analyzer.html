@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+
+{% block title %}Password Analyzer - SecureVault AI{% endblock %}
+
+{% block content %}
+<div class="py-4">
+    <h1 class="fw-bold mb-4"><i class="fas fa-shield-alt"></i> Password Strength Analyzer</h1>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <!-- Input Section -->
+            <div class="card shadow-lg border-0 mb-4">
+                <div class="card-body p-5">
+                    <div class="mb-4">
+                        <label for="passwordInput" class="form-label fw-bold">Enter Password to Analyze</label>
+                        <input type="password" class="form-control form-control-lg" id="passwordInput"
+                               placeholder="Type or paste your password here">
+                        <small class="text-muted">Password is analyzed locally and never stored</small>
+                    </div>
+
+                    <button class="btn btn-primary btn-lg fw-bold w-100" onclick="analyzePassword()">
+                        <i class="fas fa-search"></i> Analyze Password
+                    </button>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultsSection" style="display: none;">
+                <!-- Strength Card -->
+                <div class="card shadow-lg border-0 mb-4">
+                    <div class="card-body p-5">
+                        <h5 class="fw-bold mb-4">Password Strength</h5>
+
+                        <!-- Strength Badge -->
+                        <div class="text-center mb-4">
+                            <h2 id="strengthBadge" class="fw-bold"></h2>
+                            <div id="strengthMeter" style="height: 20px; background: #e9ecef; border-radius: 10px; overflow: hidden;">
+                                <div id="strengthBar" style="height: 100%; width: 0%; transition: all 0.3s ease;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Metrics -->
+                        <div class="row text-center">
+                            <div class="col-md-4 mb-3">
+                                <p class="text-muted mb-1">Entropy Score</p>
+                                <h5 id="entropyScore" class="fw-bold">--</h5>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <p class="text-muted mb-1">Crack Time</p>
+                                <h5 id="crackTime" class="fw-bold">--</h5>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <p class="text-muted mb-1">Length</p>
+                                <h5 id="passwordLength" class="fw-bold">--</h5>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Character Analysis -->
+                <div class="card shadow-lg border-0 mb-4">
+                    <div class="card-body p-5">
+                        <h5 class="fw-bold mb-4">Character Analysis</h5>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="d-flex align-items-center">
+                                    <div id="uppercaseCheck" class="check-icon me-3">
+                                        <i class="fas fa-times text-danger"></i>
+                                    </div>
+                                    <span>Uppercase Letters (A-Z)</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="d-flex align-items-center">
+                                    <div id="lowercaseCheck" class="check-icon me-3">
+                                        <i class="fas fa-times text-danger"></i>
+                                    </div>
+                                    <span>Lowercase Letters (a-z)</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="d-flex align-items-center">
+                                    <div id="numbersCheck" class="check-icon me-3">
+                                        <i class="fas fa-times text-danger"></i>
+                                    </div>
+                                    <span>Numbers (0-9)</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="d-flex align-items-center">
+                                    <div id="specialCheck" class="check-icon me-3">
+                                        <i class="fas fa-times text-danger"></i>
+                                    </div>
+                                    <span>Special Characters (!@#$%...)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recommendations -->
+                <div class="card shadow-lg border-0 mb-4">
+                    <div class="card-body p-5">
+                        <h5 class="fw-bold mb-4">Recommendations</h5>
+                        <ul id="recommendationsList" class="list-unstyled">
+                            <li><i class="fas fa-check-circle text-success me-2"></i> Password looks great!</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Suggestions -->
+                <div class="card shadow-lg border-0 mb-4">
+                    <div class="card-body p-5">
+                        <h5 class="fw-bold mb-4">Secure Password Suggestions</h5>
+                        <div class="mb-3">
+                            <label class="form-label text-muted">Complex & Random:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="secureSuggestion" readonly>
+                                <button class="btn btn-outline-primary" onclick="copySuggestion('secureSuggestion')">
+                                    <i class="fas fa-copy"></i> Copy
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted">Memorable & Secure:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="memorableSuggestion" readonly>
+                                <button class="btn btn-outline-primary" onclick="copySuggestion('memorableSuggestion')">
+                                    <i class="fas fa-copy"></i> Copy
+                                </button>
+                            </div>
+                        </div>
+                        <button class="btn btn-info w-100" onclick="generateNewSuggestions()">
+                            <i class="fas fa-refresh"></i> Generate New Suggestions
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tips Box -->
+            <div class="card bg-light border-0">
+                <div class="card-body">
+                    <h5 class="fw-bold mb-3"><i class="fas fa-lightbulb"></i> Password Security Tips</h5>
+                    <ul class="mb-0">
+                        <li>Use at least 12 characters for strong security</li>
+                        <li>Mix uppercase, lowercase, numbers, and symbols</li>
+                        <li>Avoid common words or personal information</li>
+                        <li>Use unique passwords for different accounts</li>
+                        <li>Consider using a password manager</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .check-icon {
+        font-size: 1.2rem;
+    }
+
+    .check-icon.success i {
+        color: #28a745;
+    }
+
+    .check-icon.danger i {
+        color: #dc3545;
+    }
+
+    #strengthMeter {
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    #strengthBar {
+        transition: all 0.3s ease;
+    }
+</style>
+
+<script>
+    function analyzePassword() {
+        const password = document.getElementById('passwordInput').value;
+
+        if (!password) {
+            alert('Please enter a password');
+            return;
+        }
+
+        fetch('/password/api/analyze', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ password: password })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayResults(data.analysis);
+            } else {
+                alert('Analysis failed: ' + data.error);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    function displayResults(analysis) {
+        // Show results section
+        document.getElementById('resultsSection').style.display = 'block';
+
+        // Strength
+        const strengthEl = document.getElementById('strengthBadge');
+        const strengthBar = document.getElementById('strengthBar');
+        let color, width;
+
+        if (analysis.strength_level === 'Weak') {
+            strengthEl.textContent = '⚠️ Weak';
+            strengthEl.className = 'fw-bold text-danger';
+            strengthBar.style.backgroundColor = '#dc3545';
+            width = '30%';
+        } else if (analysis.strength_level === 'Medium') {
+            strengthEl.textContent = '⚡ Medium';
+            strengthEl.className = 'fw-bold text-warning';
+            strengthBar.style.backgroundColor = '#ffc107';
+            width = '70%';
+        } else {
+            strengthEl.textContent = '✓ Strong';
+            strengthEl.className = 'fw-bold text-success';
+            strengthBar.style.backgroundColor = '#28a745';
+            width = '100%';
+        }
+        strengthBar.style.width = width;
+
+        // Metrics
+        document.getElementById('entropyScore').textContent = analysis.entropy_score.toFixed(2);
+        document.getElementById('crackTime').textContent = analysis.crack_time;
+        document.getElementById('passwordLength').textContent = analysis.password_length;
+
+        // Character checks
+        updateCheck('uppercaseCheck', analysis.has_uppercase);
+        updateCheck('lowercaseCheck', analysis.has_lowercase);
+        updateCheck('numbersCheck', analysis.has_numbers);
+        updateCheck('specialCheck', analysis.has_special_chars);
+
+        // Recommendations
+        const recList = document.getElementById('recommendationsList');
+        if (analysis.recommendations.length === 0) {
+            recList.innerHTML = '<li><i class="fas fa-check-circle text-success me-2"></i> Excellent password!</li>';
+        } else {
+            recList.innerHTML = analysis.recommendations
+                .map(rec => `<li><i class="fas fa-info-circle text-info me-2"></i> ${rec}</li>`)
+                .join('');
+        }
+
+        // Suggestions
+        document.getElementById('secureSuggestion').value = analysis.secure_suggestion;
+        document.getElementById('memorableSuggestion').value = analysis.memorable_suggestion;
+
+        // Scroll to results
+        document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function updateCheck(elementId, isTrue) {
+        const el = document.getElementById(elementId);
+        if (isTrue) {
+            el.classList.add('success');
+            el.classList.remove('danger');
+            el.innerHTML = '<i class="fas fa-check-circle text-success"></i>';
+        } else {
+            el.classList.add('danger');
+            el.classList.remove('success');
+            el.innerHTML = '<i class="fas fa-times-circle text-danger"></i>';
+        }
+    }
+
+    function copySuggestion(elementId) {
+        const el = document.getElementById(elementId);
+        el.select();
+        document.execCommand('copy');
+        alert('Copied to clipboard!');
+    }
+
+    function generateNewSuggestions() {
+        fetch('/password/api/generate-password?type=secure')
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    document.getElementById('secureSuggestion').value = d.password;
+                }
+            });
+
+        fetch('/password/api/generate-password?type=memorable')
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    document.getElementById('memorableSuggestion').value = d.password;
+                }
+            });
+    }
+
+    // Analyze on Enter key
+    document.getElementById('passwordInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            analyzePassword();
+        }
+    });
+</script>
+{% endblock %}

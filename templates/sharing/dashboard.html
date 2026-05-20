@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}Sharing Dashboard - SecureVault AI{% endblock %}
+
+{% block content %}
+<div class="sharing-dashboard mt-5">
+    <!-- Analytics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-share-alt fa-3x text-primary mb-2"></i>
+                    <h6 class="text-muted">Total Shares</h6>
+                    <h3 class="fw-bold">{{ analytics.total_shares }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-check-circle fa-3x text-success mb-2"></i>
+                    <h6 class="text-muted">Active Shares</h6>
+                    <h3 class="fw-bold">{{ analytics.active_shares }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-arrow-down fa-3x text-info mb-2"></i>
+                    <h6 class="text-muted">Total Accesses</h6>
+                    <h3 class="fw-bold">{{ analytics.total_accesses }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-inbox fa-3x text-warning mb-2"></i>
+                    <h6 class="text-muted">Files Shared With Me</h6>
+                    <h3 class="fw-bold">{{ received_shares|length }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-4" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="myShares-tab" data-bs-toggle="tab" 
+                    data-bs-target="#myShares" type="button" role="tab">
+                <i class="fas fa-upload"></i> Shares I've Created
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="receivedShares-tab" data-bs-toggle="tab" 
+                    data-bs-target="#receivedShares" type="button" role="tab">
+                <i class="fas fa-download"></i> Files Shared With Me
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+        <!-- My Shares Tab -->
+        <div class="tab-pane fade show active" id="myShares" role="tabpanel">
+            {% if shared_files %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>File Name</th>
+                            <th>Share Method</th>
+                            <th>Access Mode</th>
+                            <th>Accesses</th>
+                            <th>Status</th>
+                            <th>Expires</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for share in shared_files %}
+                        <tr>
+                            <td>
+                                <i class="fas fa-file"></i> {{ share.encrypted_file.original_filename }}
+                            </td>
+                            <td>
+                                {% if share.share_method == 'qrcode' %}
+                                    <span class="badge bg-primary"><i class="fas fa-qrcode"></i> QR Code</span>
+                                {% elif share.share_method == 'otp' %}
+                                    <span class="badge bg-warning"><i class="fas fa-lock"></i> OTP</span>
+                                {% elif share.share_method == 'user_id' %}
+                                    <span class="badge bg-info"><i class="fas fa-user"></i> User</span>
+                                {% elif share.share_method == 'link' %}
+                                    <span class="badge bg-success"><i class="fas fa-link"></i> Link</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ share.access_mode|replace('_', ' ')|title }}</span>
+                            </td>
+                            <td>
+                                {{ share.access_count }}
+                                {% if share.max_access_count %}
+                                    / {{ share.max_access_count }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if share.is_active and share.share_expiry > now %}
+                                    <span class="badge bg-success"><i class="fas fa-check-circle"></i> Active</span>
+                                {% else %}
+                                    <span class="badge bg-danger"><i class="fas fa-times-circle"></i> Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if share.share_expiry %}
+                                    {{ share.share_expiry.strftime('%m/%d %H:%M') }}
+                                {% else %}
+                                    Never
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-info" data-bs-toggle="modal" 
+                                        data-bs-target="#analyticsModal" onclick="loadAnalytics('{{ share.id }}')">
+                                    <i class="fas fa-chart-bar"></i> Analytics
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="revokeShare('{{ share.id }}')">
+                                    <i class="fas fa-trash"></i> Revoke
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info text-center py-5">
+                <i class="fas fa-inbox fa-3x mb-3"></i>
+                <p>You haven't shared any files yet</p>
+                <a href="{{ url_for('main.file_history') }}" class="btn btn-primary">
+                    <i class="fas fa-share"></i> Share Your First File
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Received Shares Tab -->
+        <div class="tab-pane fade" id="receivedShares" role="tabpanel">
+            {% if received_shares %}
+            <div class="row">
+                {% for share in received_shares %}
+                <div class="col-md-6 mb-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">
+                                <i class="fas fa-file"></i> {{ share.encrypted_file.original_filename }}
+                            </h5>
+                            <small class="text-muted">from {{ share.owner.username }}</small>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row">
+                                <dt class="col-sm-6">Shared On:</dt>
+                                <dd class="col-sm-6">{{ share.created_at.strftime('%m/%d/%Y') }}</dd>
+                                
+                                <dt class="col-sm-6">Access Mode:</dt>
+                                <dd class="col-sm-6">
+                                    <span class="badge bg-secondary">{{ share.access_mode|replace('_', ' ')|title }}</span>
+                                </dd>
+                                
+                                <dt class="col-sm-6">Expires:</dt>
+                                <dd class="col-sm-6">
+                                    {% if share.share_expiry %}
+                                        {{ share.share_expiry.strftime('%m/%d %H:%M') }}
+                                    {% else %}
+                                        Never
+                                    {% endif %}
+                                </dd>
+                            </dl>
+                        </div>
+                        <div class="card-footer bg-light">
+                            <a href="{{ url_for('sharing.access_shared_file', token=share.sharing_token) }}" 
+                               class="btn btn-primary btn-sm">
+                                <i class="fas fa-eye"></i> View File
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="alert alert-info text-center py-5">
+                <i class="fas fa-inbox fa-3x mb-3"></i>
+                <p>No files have been shared with you yet</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Analytics Modal -->
+<div class="modal fade" id="analyticsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-chart-bar"></i> Share Analytics</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="analyticsContent">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function loadAnalytics(shareId) {
+    fetch(`{{ url_for('sharing.share_analytics', share_id='__SHARE_ID__') }}`.replace('__SHARE_ID__', shareId))
+        .then(response => response.json())
+        .then(data => {
+            let html = '<dl class="row">';
+            html += `<dt class="col-sm-6">Total Accesses:</dt><dd class="col-sm-6"><strong>${data.total_accesses}</strong></dd>`;
+            html += `<dt class="col-sm-6">Unique IPs:</dt><dd class="col-sm-6"><strong>${data.unique_ips}</strong></dd>`;
+            html += `<dt class="col-sm-6">Failed Attempts:</dt><dd class="col-sm-6"><strong>${data.failed_attempts}</strong></dd>`;
+            html += `<dt class="col-sm-6">Last Accessed:</dt><dd class="col-sm-6"><strong>${new Date(data.last_accessed).toLocaleString()}</strong></dd>`;
+            html += `<dt class="col-sm-6">Expires At:</dt><dd class="col-sm-6"><strong>${new Date(data.expires_at).toLocaleString()}</strong></dd>`;
+            html += '</dl>';
+            
+            document.getElementById('analyticsContent').innerHTML = html;
+        })
+        .catch(error => {
+            document.getElementById('analyticsContent').innerHTML = '<div class="alert alert-danger">Error loading analytics</div>';
+        });
+}
+
+function revokeShare(shareId) {
+    if (confirm('Are you sure you want to revoke this share? The recipient will no longer be able to access it.')) {
+        fetch(`{{ url_for('sharing.revoke_share', share_id='__SHARE_ID__') }}`.replace('__SHARE_ID__', shareId), {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Share revoked successfully');
+                location.reload();
+            }
+        })
+        .catch(error => alert('Error revoking share'));
+    }
+}
+</script>
+{% endblock %}
