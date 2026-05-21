@@ -154,16 +154,114 @@ class AccessLog(db.Model):
     ip_address = db.Column(db.String(45), nullable=False)
     user_agent = db.Column(db.String(255))
     device_info = db.Column(db.String(255))
+    device_type = db.Column(db.String(50), nullable=True)  # desktop, mobile, tablet
+    browser = db.Column(db.String(100), nullable=True)
+    operating_system = db.Column(db.String(100), nullable=True)
     action = db.Column(db.String(100), nullable=False)  # viewed, downloaded, failed_otp, etc.
     status = db.Column(db.String(20), default='success')
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
-    
+
     # Additional tracking
     failure_reason = db.Column(db.String(255), nullable=True)
     request_method = db.Column(db.String(10), nullable=True)
-    
+
     # Relationships
     user = db.relationship('User', backref='access_logs')
 
     def __repr__(self):
         return f'<AccessLog {self.action}>'
+
+
+class OTPVerification(db.Model):
+    """Model for tracking OTP verification attempts"""
+    __tablename__ = 'otp_verifications'
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False, index=True)
+    shared_file_id = db.Column(db.String(36), db.ForeignKey('shared_files.id'), nullable=True, index=True)
+    otp_code = db.Column(db.String(10), nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    verified = db.Column(db.Boolean, default=False)
+    failed_attempts = db.Column(db.Integer, default=0)
+    ip_address = db.Column(db.String(45), nullable=False)
+    device_info = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+    verified_at = db.Column(db.DateTime, nullable=True)
+
+    # Relationships
+    user = db.relationship('User', backref='otp_verifications')
+    shared_file = db.relationship('SharedFile', backref='otp_verifications')
+
+    def __repr__(self):
+        return f'<OTPVerification {self.id}>'
+
+
+class DeviceSession(db.Model):
+    """Model for tracking trusted devices"""
+    __tablename__ = 'device_sessions'
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False, index=True)
+    device_fingerprint = db.Column(db.String(255), nullable=False)
+    device_name = db.Column(db.String(255), nullable=False)  # e.g., "Chrome on Windows"
+    device_type = db.Column(db.String(50), nullable=False)  # desktop, mobile, tablet
+    browser = db.Column(db.String(100), nullable=True)
+    operating_system = db.Column(db.String(100), nullable=True)
+    ip_address = db.Column(db.String(45), nullable=False)
+    user_agent = db.Column(db.String(255), nullable=True)
+    is_trusted = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    last_used = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = db.relationship('User', backref='device_sessions')
+
+    def __repr__(self):
+        return f'<DeviceSession {self.device_name}>'
+
+
+class ShareNotification(db.Model):
+    """Model for share-related notifications"""
+    __tablename__ = 'share_notifications'
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    recipient_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False, index=True)
+    shared_file_id = db.Column(db.String(36), db.ForeignKey('shared_files.id'), nullable=False, index=True)
+    sender_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
+    notification_type = db.Column(db.String(50), nullable=False)  # shared, accessed, expired, revoked
+    message = db.Column(db.String(500), nullable=False)
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+    read_at = db.Column(db.DateTime, nullable=True)
+
+    # Relationships
+    recipient = db.relationship('User', foreign_keys=[recipient_id], backref='received_notifications')
+    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_notifications')
+    shared_file = db.relationship('SharedFile', backref='notifications')
+
+    def __repr__(self):
+        return f'<ShareNotification {self.notification_type}>'
+
+
+class SecurityEvent(db.Model):
+    """Model for security-related events"""
+    __tablename__ = 'security_events'
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False, index=True)
+    event_type = db.Column(db.String(100), nullable=False)  # failed_otp, unauthorized_access, device_change, unusual_activity
+    severity = db.Column(db.String(20), default='low')  # low, medium, high, critical
+    message = db.Column(db.String(500), nullable=False)
+    details = db.Column(db.Text, nullable=True)
+    ip_address = db.Column(db.String(45), nullable=False)
+    device_info = db.Column(db.String(255), nullable=True)
+    user_agent = db.Column(db.String(255), nullable=True)
+    is_resolved = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+    resolved_at = db.Column(db.DateTime, nullable=True)
+
+    # Relationships
+    user = db.relationship('User', backref='security_events')
+
+    def __repr__(self):
+        return f'<SecurityEvent {self.event_type}>'
