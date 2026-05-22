@@ -78,19 +78,27 @@ class OTPManager:
         return pyotp.random_base32()
     
     @staticmethod
-    def verify_otp(otp_code, stored_otp, max_age_seconds=300):
+    def verify_otp(otp_code, stored_otp, expires_at=None, max_age_seconds=300):
         """
-        Verify OTP code
-        
+        Verify OTP code with expiry validation
+
         Args:
             otp_code: OTP provided by user
             stored_otp: OTP stored in database
-            max_age_seconds: Maximum age of OTP in seconds (default 5 minutes)
-            
+            expires_at: Expiry datetime (if provided, checks expiry)
+            max_age_seconds: Maximum age of OTP in seconds (default 5 minutes, legacy support)
+
         Returns:
             Boolean indicating if OTP is valid
         """
-        return otp_code == stored_otp
+        if not otp_code or otp_code != stored_otp:
+            return False
+
+        if expires_at is not None:
+            if datetime.utcnow() > expires_at:
+                return False
+
+        return True
     
     @staticmethod
     def verify_totp(secret, token, window=1):

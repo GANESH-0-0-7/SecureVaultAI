@@ -87,20 +87,10 @@ def configure_rate_limiting(app):
 
 
 def apply_otp_limit(f):
-    """Decorator to apply OTP verification rate limit"""
-    from flask_limiter.util import get_remote_address
-
-    def decorator(*args, **kwargs):
-        return f(*args, **kwargs)
-
-    decorator.__wrapped__ = f
-    return decorator
+    """Decorator to apply OTP verification rate limit (5 attempts per 5 minutes)"""
+    return limiter.limit(RateLimitConfig.OTP_VERIFY, key_func=get_rate_limit_key)(f)
 
 
 def apply_login_limit(f):
-    """Decorator to apply login rate limit"""
-    def decorator(*args, **kwargs):
-        return f(*args, **kwargs)
-
-    decorator.__wrapped__ = f
-    return decorator
+    """Decorator to apply login rate limit (5 attempts per 15 minutes)"""
+    return limiter.limit(RateLimitConfig.LOGIN, key_func=get_rate_limit_key)(f)

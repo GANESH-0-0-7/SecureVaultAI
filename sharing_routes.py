@@ -197,7 +197,7 @@ def verify_otp(share_id):
             flash('Too many OTP attempts', 'error')
             return redirect(url_for('auth.login'))
         
-        if OTPManager.verify_otp(otp_input, shared_file.otp_code):
+        if OTPManager.verify_otp(otp_input, shared_file.otp_code, expires_at=shared_file.otp_expiry):
             log_access(shared_file.id, 'otp_verified')
             request.session[f'otp_verified_{shared_file.id}'] = True
             return redirect(url_for('sharing.access_shared_file', token=shared_file.sharing_token))
