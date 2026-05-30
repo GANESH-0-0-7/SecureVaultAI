@@ -1,0 +1,448 @@
+{% extends "base.html" %}
+
+{% block title %}Security Logs - SecureVaultAI{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <!-- Header -->
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <h1 class="display-6">Security Logs</h1>
+      <p class="text-muted">Monitor all security events and access attempts for your shared files</p>
+    </div>
+    <div class="col-md-4 text-end">
+      <button class="btn btn-outline-danger" onclick="clearOldLogs()">
+        <i class="fas fa-trash"></i> Clear Old Logs
+      </button>
+    </div>
+  </div>
+
+  <!-- Security Alerts Summary -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card glass-card border-danger">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="text-muted mb-2">Critical Alerts</h6>
+              <h3 class="text-danger mb-0" id="criticalCount">0</h3>
+            </div>
+            <i class="fas fa-skull-crossbones fa-3x text-danger opacity-25"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card glass-card border-warning">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="text-muted mb-2">Failed Attempts</h6>
+              <h3 class="text-warning mb-0" id="failedCount">0</h3>
+            </div>
+            <i class="fas fa-exclamation-triangle fa-3x text-warning opacity-25"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card glass-card border-info">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="text-muted mb-2">Device Changes</h6>
+              <h3 class="text-info mb-0" id="deviceChangeCount">0</h3>
+            </div>
+            <i class="fas fa-mobile-alt fa-3x text-info opacity-25"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card glass-card border-success">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="text-muted mb-2">Total Events</h6>
+              <h3 class="text-success mb-0" id="totalEvents">0</h3>
+            </div>
+            <i class="fas fa-chart-line fa-3x text-success opacity-25"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card glass-card">
+        <div class="card-body">
+          <div class="row g-2">
+            <div class="col-md-3">
+              <label class="form-label small text-muted">Event Type</label>
+              <select class="form-select form-select-sm" id="eventTypeFilter">
+                <option value="">All Events</option>
+                <option value="failed_otp">Failed OTP</option>
+                <option value="unauthorized_access">Unauthorized Access</option>
+                <option value="device_change">Device Change</option>
+                <option value="unusual_activity">Unusual Activity</option>
+                <option value="brute_force">Brute Force</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small text-muted">Severity</label>
+              <select class="form-select form-select-sm" id="severityFilter">
+                <option value="">All Severity</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small text-muted">Date Range</label>
+              <select class="form-select form-select-sm" id="dateRangeFilter">
+                <option value="24h">Last 24 Hours</option>
+                <option value="7d">Last 7 Days</option>
+                <option value="30d">Last 30 Days</option>
+                <option value="all">All Time</option>
+              </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+              <button class="btn btn-sm btn-outline-secondary w-100" onclick="applyFilters()">
+                <i class="fas fa-filter"></i> Apply Filters
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Security Events Timeline -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card glass-card">
+        <div class="card-header bg-transparent border-bottom border-secondary">
+          <h5 class="mb-0">Security Events Timeline</h5>
+        </div>
+        <div class="card-body">
+          <div id="securityTimeline">
+            <!-- Timeline items populated by JavaScript -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detailed Logs Table -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card glass-card">
+        <div class="card-header bg-transparent border-bottom border-secondary d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Detailed Security Logs</h5>
+          <input type="text" class="form-control form-control-sm" id="logSearch" placeholder="Search logs..." style="width: 250px;">
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead class="table-dark">
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Event Type</th>
+                  <th>Severity</th>
+                  <th>Message</th>
+                  <th>IP Address</th>
+                  <th>Device</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="logsTableBody">
+                <!-- Populated by JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Event Details Modal -->
+<div class="modal fade" id="eventDetailsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content glass-card border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title">Security Event Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="eventDetailsContent">
+        <!-- Populated by JavaScript -->
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="markEventResolved()">Mark as Resolved</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let allLogs = [];
+let currentEventId = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+  loadSecurityLogs();
+  setupRealTimeUpdates();
+});
+
+function loadSecurityLogs() {
+  App.showSkeleton('logsTableBody');
+
+  fetch('/sharing/api/analytics/security')
+    .then(r => r.json())
+    .then(data => {
+      allLogs = data.events || [];
+      updateCounts();
+      renderLogs(allLogs);
+      renderTimeline(allLogs);
+    })
+    .catch(err => {
+      console.error('Error loading logs:', err);
+      App.showToast('Error loading security logs', 'danger');
+    });
+}
+
+function updateCounts() {
+  const critical = allLogs.filter(e => e.severity === 'critical').length;
+  const failed = allLogs.filter(e => e.event_type === 'failed_otp' || e.event_type === 'unauthorized_access').length;
+  const deviceChanges = allLogs.filter(e => e.event_type === 'device_change').length;
+
+  document.getElementById('criticalCount').textContent = critical;
+  document.getElementById('failedCount').textContent = failed;
+  document.getElementById('deviceChangeCount').textContent = deviceChanges;
+  document.getElementById('totalEvents').textContent = allLogs.length;
+}
+
+function renderLogs(logs) {
+  const tbody = document.getElementById('logsTableBody');
+
+  if (logs.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No security events found</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = logs.map(log => {
+    const severityColor = {
+      'low': 'primary',
+      'medium': 'warning',
+      'high': 'danger',
+      'critical': 'danger'
+    }[log.severity] || 'secondary';
+
+    return `
+      <tr onclick="showEventDetails('${log.id}')" style="cursor: pointer;">
+        <td><small>${new Date(log.created_at).toLocaleString()}</small></td>
+        <td><span class="badge bg-secondary">${log.event_type.replace('_', ' ')}</span></td>
+        <td><span class="badge bg-${severityColor}">${log.severity}</span></td>
+        <td><small>${log.message}</small></td>
+        <td><small class="text-monospace">${log.ip_address}</small></td>
+        <td><small>${log.device_info || 'Unknown'}</small></td>
+        <td>
+          <button class="btn btn-xs btn-outline-primary" onclick="viewDetails(event, '${log.id}')">
+            <i class="fas fa-eye"></i>
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function renderTimeline(logs) {
+  const timeline = document.getElementById('securityTimeline');
+  const recentLogs = logs.slice(0, 10);
+
+  timeline.innerHTML = recentLogs.map((log, idx) => {
+    const icon = {
+      'failed_otp': 'fa-lock',
+      'unauthorized_access': 'fa-ban',
+      'device_change': 'fa-mobile-alt',
+      'unusual_activity': 'fa-bolt',
+      'brute_force': 'fa-bomb'
+    }[log.event_type] || 'fa-shield-alt';
+
+    const colorClass = {
+      'critical': 'danger',
+      'high': 'warning',
+      'medium': 'info',
+      'low': 'secondary'
+    }[log.severity] || 'secondary';
+
+    return `
+      <div class="timeline-item mb-3">
+        <div class="d-flex">
+          <div class="timeline-marker bg-${colorClass} flex-shrink-0">
+            <i class="fas ${icon}"></i>
+          </div>
+          <div class="timeline-content flex-grow-1 ms-3">
+            <h6 class="mb-1">
+              ${log.event_type.replace('_', ' ').toUpperCase()}
+              <span class="badge bg-${colorClass} ms-2">${log.severity}</span>
+            </h6>
+            <p class="text-muted mb-1">${log.message}</p>
+            <small class="text-muted">
+              ${new Date(log.created_at).toLocaleString()} • ${log.ip_address}
+            </small>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function showEventDetails(eventId) {
+  currentEventId = eventId;
+  const event = allLogs.find(e => e.id === eventId);
+
+  if (!event) return;
+
+  const detailsHtml = `
+    <div class="row">
+      <div class="col-md-6">
+        <h6 class="text-muted">Event Type</h6>
+        <p>${event.event_type.replace('_', ' ').toUpperCase()}</p>
+      </div>
+      <div class="col-md-6">
+        <h6 class="text-muted">Severity</h6>
+        <p><span class="badge bg-${event.severity === 'critical' ? 'danger' : event.severity === 'high' ? 'warning' : 'info'}">${event.severity}</span></p>
+      </div>
+    </div>
+    <div class="row mt-3">
+      <div class="col-md-6">
+        <h6 class="text-muted">IP Address</h6>
+        <p class="text-monospace">${event.ip_address}</p>
+      </div>
+      <div class="col-md-6">
+        <h6 class="text-muted">Device</h6>
+        <p>${event.device_info || 'Unknown'}</p>
+      </div>
+    </div>
+    <div class="row mt-3">
+      <div class="col-12">
+        <h6 class="text-muted">Timestamp</h6>
+        <p>${new Date(event.created_at).toLocaleString()}</p>
+      </div>
+    </div>
+    <div class="row mt-3">
+      <div class="col-12">
+        <h6 class="text-muted">Details</h6>
+        <p>${event.details || event.message}</p>
+      </div>
+    </div>
+    <div class="row mt-3">
+      <div class="col-12">
+        <h6 class="text-muted">Status</h6>
+        <p>${event.is_resolved ? '<span class="badge bg-success">Resolved</span>' : '<span class="badge bg-warning">Active</span>'}</p>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('eventDetailsContent').innerHTML = detailsHtml;
+  const modal = new bootstrap.Modal(document.getElementById('eventDetailsModal'));
+  modal.show();
+}
+
+function viewDetails(e, eventId) {
+  e.stopPropagation();
+  showEventDetails(eventId);
+}
+
+function markEventResolved() {
+  if (!currentEventId) return;
+
+  fetch(`/sharing/api/security/resolve/${currentEventId}`, { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        App.showToast('Event marked as resolved', 'success');
+        loadSecurityLogs();
+        bootstrap.Modal.getInstance(document.getElementById('eventDetailsModal')).hide();
+      }
+    });
+}
+
+function applyFilters() {
+  const eventType = document.getElementById('eventTypeFilter').value;
+  const severity = document.getElementById('severityFilter').value;
+  const dateRange = document.getElementById('dateRangeFilter').value;
+
+  let filtered = [...allLogs];
+
+  if (eventType) {
+    filtered = filtered.filter(e => e.event_type === eventType);
+  }
+  if (severity) {
+    filtered = filtered.filter(e => e.severity === severity);
+  }
+
+  renderLogs(filtered);
+}
+
+function clearOldLogs() {
+  if (confirm('Clear security logs older than 90 days?')) {
+    fetch('/sharing/api/security/cleanup', { method: 'POST' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          App.showToast('Old logs cleared', 'success');
+          loadSecurityLogs();
+        }
+      });
+  }
+}
+
+function setupRealTimeUpdates() {
+  if (App.socket) {
+    App.socket.on('security:alert', (data) => {
+      App.showToast(`Security Alert: ${data.message}`, 'danger');
+      loadSecurityLogs();
+    });
+  }
+}
+
+// Search functionality
+document.getElementById('logSearch').addEventListener('keyup', function(e) {
+  const query = e.target.value.toLowerCase();
+  const filtered = allLogs.filter(log =>
+    log.event_type.toLowerCase().includes(query) ||
+    log.message.toLowerCase().includes(query) ||
+    log.ip_address.includes(query) ||
+    (log.device_info && log.device_info.toLowerCase().includes(query))
+  );
+  renderLogs(filtered);
+});
+</script>
+
+<style>
+.timeline-item {
+  position: relative;
+  padding-left: 0;
+}
+
+.timeline-marker {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 16px;
+}
+
+.timeline-content {
+  padding-top: 5px;
+}
+</style>
+{% endblock %}

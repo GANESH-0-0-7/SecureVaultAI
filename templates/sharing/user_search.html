@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+
+{% block title %}Search Users - SecureVaultAI{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <!-- Header -->
+      <h1 class="display-6 text-center mb-4">Find & Share with Users</h1>
+      <p class="text-center text-muted mb-4">Search for users to share files securely</p>
+
+      <!-- Search Input -->
+      <div class="card glass-card mb-4">
+        <div class="card-body p-4">
+          <div class="input-group input-group-lg">
+            <span class="input-group-text bg-transparent border-secondary">
+              <i class="fas fa-search"></i>
+            </span>
+            <input
+              type="text"
+              class="form-control bg-transparent border-secondary"
+              id="userSearch"
+              placeholder="Search by username, email, or ID..."
+              autocomplete="off"
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Users (when no search) -->
+      <div id="recentUsersSection" class="mb-4">
+        <h5 class="mb-3">Recent Users</h5>
+        <div id="recentUsersList">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+
+      <!-- Search Results -->
+      <div id="searchResultsSection" style="display: none;">
+        <h5 class="mb-3">Search Results</h5>
+        <div id="searchResults">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+
+      <!-- No Results Message -->
+      <div id="noResultsMessage" class="text-center text-muted py-5" style="display: none;">
+        <i class="fas fa-search fa-3x mb-3 opacity-25"></i>
+        <p>No users found</p>
+      </div>
+
+      <!-- Loading State -->
+      <div id="loadingState" class="text-center py-5" style="display: none;">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Searching...</span>
+        </div>
+        <p class="text-muted mt-3">Searching for users...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Share Quick Modal -->
+<div class="modal fade" id="shareQuickModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content glass-card border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title">Quick Share with <span id="recipientName"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted">Choose a file to share:</p>
+        <div id="filesList">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- User Profile Modal -->
+<div class="modal fade" id="userProfileModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content glass-card border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title">User Profile</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="userProfileContent">
+        <!-- Populated by JavaScript -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentUserId = null;
+let currentUserEmail = null;
+let userCache = {};
+let recentUsers = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+  loadRecentUsers();
+  setupSearch();
+});
+
+function setupSearch() {
+  const searchInput = document.getElementById('userSearch');
+
+  searchInput.addEventListener('input', App.debounce(function(e) {
+    const query = e.target.value.trim();
+
+    if (query.length === 0) {
+      hideSearchResults();
+      return;
+    }
+
+    if (query.length < 2) {
+      return;
+    }
+
+    performSearch(query);
+  }, 300));
+
+  // Show recent users on focus if search is empty
+  searchInput.addEventListener('focus', function() {
+    if (this.value.trim().length === 0) {
+      document.getElementById('recentUsersSection').style.display = 'block';
+    }
+  });
+}
+
+function performSearch(query) {
+  // Check cache first
+  if (userCache[query]) {
+    displaySearchResults(userCache[query]);
+    return;
+  }
+
+  document.getElementById('loadingState').style.display = 'block';
+  document.getElementById('searchResultsSection').style.display = 'none';
+  document.getElementById('noResultsMessage').style.display = 'none';
+
+  fetch(`/api/search-users?q=${encodeURIComponent(query)}`)
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('loadingState').style.display = 'none';
+
+      if (data.success && data.users && data.users.length > 0) {
+        userCache[query] = data.users;
+        displaySearchResults(data.users);
+      } else {
+        document.getElementById('noResultsMessage').style.display = 'block';
+      }
+    })
+    .catch(err => {
+      document.getElementById('loadingState').style.display = 'none';
+      App.showToast('Error searching users', 'danger');
+      console.error(err);
+    });
+}
+
+function displaySearchResults(users) {
+  document.getElementById('recentUsersSection').style.display = 'none';
+  document.getElementById('searchResultsSection').style.display = 'block';
+  document.getElementById('noResultsMessage').style.display = 'none';
+
+  const resultsDiv = document.getElementById('searchResults');
+  resultsDiv.innerHTML = users.map(user => createUserCard(user)).join('');
+}
+
+function hideSearchResults() {
+  document.getElementById('recentUsersSection').style.display = 'block';
+  document.getElementById('searchResultsSection').style.display = 'none';
+  document.getElementById('noResultsMessage').style.display = 'none';
+  document.getElementById('loadingState').style.display = 'none';
+}
+
+function createUserCard(user) {
+  return `
+    <div class="card glass-card mb-3">
+      <div class="card-body">
+        <div class="row align-items-center">
+          <div class="col-md-8">
+            <div class="d-flex align-items-center">
+              <div class="avatar me-3" style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 20px;">
+                ${user.username.substring(0, 1).toUpperCase()}
+              </div>
+              <div>
+                <h6 class="mb-0">${user.username}</h6>
+                <small class="text-muted">${user.email}</small>
+                <br>
+                <small class="text-muted">
+                  ID: <span class="text-monospace">${user.id.substring(0, 8)}...</span>
+                </small>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4 text-end">
+            <div class="btn-group-vertical w-100">
+              <button class="btn btn-sm btn-primary mb-2" onclick="openQuickShare('${user.id}', '${user.username}', '${user.email}')">
+                <i class="fas fa-share"></i> Share File
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="viewUserProfile('${user.id}')">
+                <i class="fas fa-user"></i> Profile
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function loadRecentUsers() {
+  fetch('/api/recent-users')
+    .then(r => r.json())
+    .then(data => {
+      recentUsers = data.users || [];
+      displayRecentUsers();
+    })
+    .catch(err => console.error('Error loading recent users:', err));
+}
+
+function displayRecentUsers() {
+  if (recentUsers.length === 0) {
+    document.getElementById('recentUsersList').innerHTML = '<p class="text-muted">No recent users</p>';
+    return;
+  }
+
+  const html = recentUsers.map(user => createUserCard(user)).join('');
+  document.getElementById('recentUsersList').innerHTML = html;
+}
+
+function openQuickShare(userId, username, email) {
+  currentUserId = userId;
+  currentUserEmail = email;
+
+  document.getElementById('recipientName').textContent = username;
+
+  // Load user's files
+  fetch('/api/my-files')
+    .then(r => r.json())
+    .then(data => {
+      const files = data.files || [];
+      const filesList = document.getElementById('filesList');
+
+      if (files.length === 0) {
+        filesList.innerHTML = '<p class="text-muted">You don\'t have any encrypted files to share</p>';
+      } else {
+        filesList.innerHTML = `
+          <div class="list-group">
+            ${files.map(file => `
+              <button class="list-group-item list-group-item-action" onclick="shareFileWith('${file.id}')">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="mb-0">${file.original_filename}</h6>
+                    <small class="text-muted">${formatFileSize(file.file_size)} • ${new Date(file.upload_date).toLocaleDateString()}</small>
+                  </div>
+                  <i class="fas fa-arrow-right"></i>
+                </div>
+              </button>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      const modal = new bootstrap.Modal(document.getElementById('shareQuickModal'));
+      modal.show();
+    });
+}
+
+function shareFileWith(fileId) {
+  // Close modal
+  bootstrap.Modal.getInstance(document.getElementById('shareQuickModal')).hide();
+
+  // Redirect to share page with pre-selected user
+  window.location.href = `/sharing/share/${fileId}?recipient=${currentUserId}`;
+}
+
+function viewUserProfile(userId) {
+  fetch(`/api/users/${userId}/profile`)
+    .then(r => r.json())
+    .then(data => {
+      const user = data.user;
+
+      const profileHtml = `
+        <div class="text-center mb-4">
+          <div class="avatar mb-3" style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 36px; margin: 0 auto;">
+            ${user.username.substring(0, 1).toUpperCase()}
+          </div>
+          <h5>${user.username}</h5>
+          <p class="text-muted">${user.email}</p>
+        </div>
+
+        <div class="mb-3">
+          <label class="text-muted small">User ID</label>
+          <p class="text-monospace">${user.id}</p>
+        </div>
+
+        <div class="mb-3">
+          <label class="text-muted small">Member Since</label>
+          <p>${new Date(user.created_at).toLocaleDateString()}</p>
+        </div>
+
+        <div class="mb-3">
+          <label class="text-muted small">Last Active</label>
+          <p>${user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}</p>
+        </div>
+      `;
+
+      document.getElementById('userProfileContent').innerHTML = profileHtml;
+      const modal = new bootstrap.Modal(document.getElementById('userProfileModal'));
+      modal.show();
+    });
+}
+
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+</script>
+
+<style>
+.input-group-lg .form-control {
+  padding: 12px 16px;
+  font-size: 16px;
+}
+
+.input-group-lg .input-group-text {
+  padding: 12px 16px;
+}
+</style>
+{% endblock %}

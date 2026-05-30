@@ -1,0 +1,444 @@
+{% extends "base.html" %}
+
+{% block title %}Share Permissions - SecureVaultAI{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-10">
+      <h1 class="display-6 mb-4">Manage Share Permissions</h1>
+
+      <!-- Permission Presets -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <h5 class="mb-3">Permission Presets</h5>
+          <div class="row">
+            <div class="col-md-3">
+              <div class="card glass-card cursor-pointer preset-card" onclick="applyPreset('viewer')">
+                <div class="card-body text-center">
+                  <i class="fas fa-eye fa-2x text-primary mb-2"></i>
+                  <h6>Viewer</h6>
+                  <small class="text-muted">View only</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card glass-card cursor-pointer preset-card" onclick="applyPreset('reviewer')">
+                <div class="card-body text-center">
+                  <i class="fas fa-search fa-2x text-info mb-2"></i>
+                  <h6>Reviewer</h6>
+                  <small class="text-muted">View & Download</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card glass-card cursor-pointer preset-card" onclick="applyPreset('editor')">
+                <div class="card-body text-center">
+                  <i class="fas fa-edit fa-2x text-success mb-2"></i>
+                  <h6>Editor</h6>
+                  <small class="text-muted">Full Access</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card glass-card cursor-pointer preset-card" onclick="applyPreset('custom')">
+                <div class="card-body text-center">
+                  <i class="fas fa-sliders-h fa-2x text-warning mb-2"></i>
+                  <h6>Custom</h6>
+                  <small class="text-muted">Custom permissions</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Permission Matrix -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="card glass-card">
+            <div class="card-header bg-transparent border-bottom border-secondary">
+              <h5 class="mb-0">Detailed Permissions</h5>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead class="table-dark">
+                    <tr>
+                      <th>Permission</th>
+                      <th class="text-center">Description</th>
+                      <th class="text-center">Allowed</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>
+                        <strong>View</strong>
+                        <br><small class="text-muted">See file contents</small>
+                      </td>
+                      <td class="text-muted"><small>User can view the decrypted file</small></td>
+                      <td class="text-center">
+                        <div class="form-check">
+                          <input class="form-check-input permission-checkbox" type="checkbox" id="permView" data-perm="view" checked>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <strong>Download</strong>
+                        <br><small class="text-muted">Download file</small>
+                      </td>
+                      <td class="text-muted"><small>User can download the file</small></td>
+                      <td class="text-center">
+                        <div class="form-check">
+                          <input class="form-check-input permission-checkbox" type="checkbox" id="permDownload" data-perm="download" checked>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <strong>Decrypt</strong>
+                        <br><small class="text-muted">Use decryption key</small>
+                      </td>
+                      <td class="text-muted"><small>User can access decryption key</small></td>
+                      <td class="text-center">
+                        <div class="form-check">
+                          <input class="form-check-input permission-checkbox" type="checkbox" id="permDecrypt" data-perm="decrypt">
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <strong>Reshare</strong>
+                        <br><small class="text-muted">Share with others</small>
+                      </td>
+                      <td class="text-muted"><small>User can share file with other users</small></td>
+                      <td class="text-center">
+                        <div class="form-check">
+                          <input class="form-check-input permission-checkbox" type="checkbox" id="permReshare" data-perm="reshare">
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <strong>Delete</strong>
+                        <br><small class="text-muted">Remove file</small>
+                      </td>
+                      <td class="text-muted"><small>User can delete the shared file</small></td>
+                      <td class="text-center">
+                        <div class="form-check">
+                          <input class="form-check-input permission-checkbox" type="checkbox" id="permDelete" data-perm="delete">
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Access Controls -->
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <div class="card glass-card">
+            <div class="card-header bg-transparent border-bottom border-secondary">
+              <h5 class="mb-0">Access Mode</h5>
+            </div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label class="form-label small text-muted">Select Access Mode</label>
+                <select class="form-select" id="accessMode">
+                  <option value="view_only">View Only</option>
+                  <option value="download_only">Download Only</option>
+                  <option value="full_access" selected>Full Access</option>
+                  <option value="locked">Locked</option>
+                  <option value="unlocked">Unlocked</option>
+                </select>
+              </div>
+              <p class="text-muted small" id="modeDescription">
+                Users can view and download the file
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="card glass-card">
+            <div class="card-header bg-transparent border-bottom border-secondary">
+              <h5 class="mb-0">Access Limits</h5>
+            </div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label class="form-label small text-muted">Max Access Count</label>
+                <input type="number" class="form-control" id="maxAccessCount" placeholder="Leave empty for unlimited" min="1">
+              </div>
+              <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="oneTimeOnly">
+                <label class="form-check-label" for="oneTimeOnly">
+                  One-time access only
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Expiration Settings -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="card glass-card">
+            <div class="card-header bg-transparent border-bottom border-secondary">
+              <h5 class="mb-0">Expiration Settings</h5>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6">
+                  <label class="form-label small text-muted">Expiration Time</label>
+                  <div class="btn-group w-100" role="group">
+                    <input type="radio" class="btn-check" name="expiry" value="24" id="expiry24" checked>
+                    <label class="btn btn-outline-primary" for="expiry24">24h</label>
+
+                    <input type="radio" class="btn-check" name="expiry" value="72" id="expiry72">
+                    <label class="btn btn-outline-primary" for="expiry72">3 days</label>
+
+                    <input type="radio" class="btn-check" name="expiry" value="168" id="expiry168">
+                    <label class="btn btn-outline-primary" for="expiry168">7 days</label>
+
+                    <input type="radio" class="btn-check" name="expiry" value="custom" id="expiryCustom">
+                    <label class="btn btn-outline-primary" for="expiryCustom">Custom</label>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small text-muted">Custom Hours</label>
+                  <input type="number" class="form-control" id="customExpiry" placeholder="Enter hours" min="1" disabled>
+                </div>
+              </div>
+              <div class="mt-3">
+                <p class="text-muted small" id="expiryInfo">
+                  <i class="fas fa-clock"></i> Share expires in 24 hours
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Permissions Summary -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="card glass-card border-success">
+            <div class="card-header bg-transparent border-bottom border-success">
+              <h5 class="mb-0">Active Permissions Summary</h5>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6">
+                  <h6 class="text-muted">Enabled Permissions</h6>
+                  <div id="enabledPerms">
+                    <small class="badge bg-success">View</small>
+                    <small class="badge bg-success">Download</small>
+                  </div>
+                </div>
+                <div class="col-md-6 text-end">
+                  <h6 class="text-muted">Access Mode</h6>
+                  <p class="mb-0"><span class="badge bg-primary">Full Access</span></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="row">
+        <div class="col-12 text-end">
+          <button class="btn btn-secondary me-2" onclick="resetPermissions()">
+            <i class="fas fa-redo"></i> Reset
+          </button>
+          <button class="btn btn-primary" onclick="savePermissions()">
+            <i class="fas fa-save"></i> Save Permissions
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  setupPermissionListeners();
+  setupExpiryListeners();
+});
+
+function applyPreset(preset) {
+  const presets = {
+    viewer: {
+      view: true,
+      download: false,
+      decrypt: false,
+      reshare: false,
+      delete: false,
+      mode: 'view_only'
+    },
+    reviewer: {
+      view: true,
+      download: true,
+      decrypt: false,
+      reshare: false,
+      delete: false,
+      mode: 'download_only'
+    },
+    editor: {
+      view: true,
+      download: true,
+      decrypt: true,
+      reshare: false,
+      delete: false,
+      mode: 'full_access'
+    }
+  };
+
+  if (presets[preset]) {
+    const config = presets[preset];
+    document.getElementById('permView').checked = config.view;
+    document.getElementById('permDownload').checked = config.download;
+    document.getElementById('permDecrypt').checked = config.decrypt;
+    document.getElementById('permReshare').checked = config.reshare;
+    document.getElementById('permDelete').checked = config.delete;
+    document.getElementById('accessMode').value = config.mode;
+    updateSummary();
+  }
+
+  // Highlight selected preset
+  document.querySelectorAll('.preset-card').forEach(card => {
+    card.classList.remove('border-primary', 'border-3');
+  });
+  event.currentTarget.classList.add('border-primary', 'border-3');
+
+  App.showToast(`Applied ${preset} preset`, 'success');
+}
+
+function setupPermissionListeners() {
+  document.querySelectorAll('.permission-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', updateSummary);
+  });
+
+  document.getElementById('accessMode').addEventListener('change', function() {
+    const descriptions = {
+      'view_only': 'Users can only view the file',
+      'download_only': 'Users can view and download the file',
+      'full_access': 'Users have full access to the file',
+      'locked': 'Share is locked until password verification',
+      'unlocked': 'Users can access without additional verification'
+    };
+    document.getElementById('modeDescription').textContent = descriptions[this.value] || '';
+    updateSummary();
+  });
+
+  document.getElementById('oneTimeOnly').addEventListener('change', updateSummary);
+}
+
+function setupExpiryListeners() {
+  const customInput = document.getElementById('customExpiry');
+  document.querySelectorAll('input[name="expiry"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+      if (this.value === 'custom') {
+        customInput.disabled = false;
+        customInput.focus();
+      } else {
+        customInput.disabled = true;
+        updateExpiryInfo(parseInt(this.value));
+      }
+    });
+  });
+
+  customInput.addEventListener('change', function() {
+    if (this.value) {
+      updateExpiryInfo(parseInt(this.value));
+    }
+  });
+}
+
+function updateExpiryInfo(hours) {
+  const date = new Date();
+  date.setHours(date.getHours() + hours);
+  const formatted = date.toLocaleString();
+  document.getElementById('expiryInfo').innerHTML = `
+    <i class="fas fa-clock"></i> Share expires ${formatted}
+  `;
+}
+
+function updateSummary() {
+  const enabledPerms = [];
+  document.querySelectorAll('.permission-checkbox:checked').forEach(checkbox => {
+    const perm = checkbox.getAttribute('data-perm');
+    enabledPerms.push(perm.charAt(0).toUpperCase() + perm.slice(1));
+  });
+
+  const enabledPermsDiv = document.getElementById('enabledPerms');
+  if (enabledPerms.length === 0) {
+    enabledPermsDiv.innerHTML = '<small class="text-muted">No permissions granted</small>';
+  } else {
+    enabledPermsDiv.innerHTML = enabledPerms
+      .map(p => `<small class="badge bg-success">${p}</small>`)
+      .join(' ');
+  }
+}
+
+function savePermissions() {
+  const permissions = {
+    view: document.getElementById('permView').checked,
+    download: document.getElementById('permDownload').checked,
+    decrypt: document.getElementById('permDecrypt').checked,
+    reshare: document.getElementById('permReshare').checked,
+    delete: document.getElementById('permDelete').checked,
+    access_mode: document.getElementById('accessMode').value,
+    max_access_count: document.getElementById('maxAccessCount').value || null,
+    one_time_only: document.getElementById('oneTimeOnly').checked,
+    expiry_hours: document.querySelector('input[name="expiry"]:checked').value === 'custom'
+      ? document.getElementById('customExpiry').value
+      : document.querySelector('input[name="expiry"]:checked').value
+  };
+
+  console.log('Saving permissions:', permissions);
+  App.showToast('Permissions saved successfully', 'success');
+  // In real implementation, POST to /api/share/permissions
+}
+
+function resetPermissions() {
+  document.getElementById('permView').checked = true;
+  document.getElementById('permDownload').checked = true;
+  document.getElementById('permDecrypt').checked = false;
+  document.getElementById('permReshare').checked = false;
+  document.getElementById('permDelete').checked = false;
+  document.getElementById('accessMode').value = 'full_access';
+  document.getElementById('maxAccessCount').value = '';
+  document.getElementById('oneTimeOnly').checked = false;
+  document.getElementById('expiry24').checked = true;
+  updateSummary();
+  updateExpiryInfo(24);
+  App.showToast('Permissions reset', 'info');
+}
+</script>
+
+<style>
+.preset-card {
+  transition: all 0.3s ease;
+}
+
+.preset-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+}
+
+.preset-card.border-3 {
+  border: 3px solid #667eea !important;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+</style>
+{% endblock %}

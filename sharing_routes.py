@@ -327,11 +327,325 @@ def resend_otp_api(share_id):
         shared_file.otp_expiry = datetime.utcnow() + timedelta(minutes=5)
         shared_file.otp_attempts = 0
         db.session.commit()
-        
+
         # In production, send OTP via email
         log_access(shared_file.id, 'otp_resent')
-        
+
         return jsonify({'success': True, 'message': 'OTP resent'})
+
+
+# ==================== ADVANCED ANALYTICS API ENDPOINTS ====================
+
+@sharing_bp.route('/api/search-users', methods=['GET'])
+@login_required
+def search_users():
+    """Search for users by username, email, or ID"""
+    query = request.args.get('q', '').strip()
+
+    if not query or len(query) < 2:
+        return jsonify({'success': False, 'message': 'Query too short'}), 400
+
+    try:
+        # Search by username or email
+        users = User.query.filter(
+            db.or_(
+                User.username.ilike(f'%{query}%'),
+                User.email.ilike(f'%{query}%'),
+                User.id.ilike(f'%{query}%')
+            )
+        ).filter(User.id != current_user.id).limit(10).all()
+
+        user_list = [{
+            'id': u.id,
+            'username': u.username,
+            'email': u.email,
+            'created_at': u.created_at.isoformat() if u.created_at else None
+        } for u in users]
+
+        return jsonify({'success': True, 'users': user_list})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@sharing_bp.route('/api/recent-users', methods=['GET'])
+@login_required
+def get_recent_users():
+    """Get users the current user has recently shared with"""
+    try:
+        # Get recently shared-with users
+        recent = db.session.query(User).join(
+            SharedFile, SharedFile.recipient_id == User.id
+        ).filter(
+            SharedFile.owner_id == current_user.id
+        ).group_by(User.id).order_by(
+            SharedFile.created_at.desc()
+        ).limit(5).all()
+
+        user_list = [{
+            'id': u.id,
+            'username': u.username,
+            'email': u.email
+        } for u in recent]
+
+        return jsonify({'success': True, 'users': user_list})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@sharing_bp.route('/api/my-files', methods=['GET'])
+@login_required
+def get_my_files():
+    """Get current user's encrypted files"""
+    try:
+        files = EncryptedFile.query.filter_by(user_id=current_user.id).all()
+
+        file_list = [{
+            'id': f.id,
+            'original_filename': f.original_filename,
+            'file_size': f.file_size,
+            'upload_date': f.upload_date.isoformat() if f.upload_date else None
+        } for f in files]
+
+        return jsonify({'success': True, 'files': file_list})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@sharing_bp.route('/api/analytics/shares', methods=['GET'])
+@login_required
+def analytics_shares():
+    """Get share analytics"""
+    share_id = request.args.get('share_id')
+
+    if share_id:
+        shared_file = SharedFile.query.filter_by(id=share_id, owner_id=current_user.id).first()
+        if not shared_file:
+            return jsonify({'success': False, 'message': 'Share not found'}), 404
+
+        logs = AccessLog.query.filter_by(shared_file_id=share_id).all()
+
+        return jsonify({
+            'success': True,
+            'share_id': share_id,
+            'total_accesses': shared_file.access_count,
+            'logs': [{
+                'id': l.id,
+                'action': l.action,
+                'user_id': l.user_id,
+                'ip_address': l.ip_address,
+                'browser': l.browser,
+                'operating_system': l.operating_system,
+                'timestamp': l.timestamp.isoformat() if l.timestamp else None,
+                'status': l.status
+            } for l in logs[-20:]]
+        })
+
+    # Return all shares analytics for current user
+    try:
+        shares = SharedFile.query.filter_by(owner_id=current_user.id).all()
+        analytics = {
+            'total_shares': len(shares),
+            'active_shares': len([s for s in shares if s.is_active]),
+            'total_accesses': sum([s.access_count for s in shares]),
+            'shares': [{
+                'id': s.id,
+                'file_name': s.encrypted_file.original_filename,
+                'recipient': s.recipient.username if s.recipient else 'Public',
+                'access_count': s.access_count,
+                'created_at': s.created_at.isoformat() if s.created_at else None
+            } for s in shares[-10:]]
+        }
+
+        return jsonify({'success': True, 'analytics': analytics})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@sharing_bp.route('/api/analytics/security', methods=['GET'])
+@login_required
+def analytics_security():
+    """Get security events for current user"""
+    try:
+        from models import SecurityEvent
+
+        events = SecurityEvent.query.filter_by(user_id=current_user.id).order_by(
+            SecurityEvent.created_at.desc()
+        ).limit(50).all()
+
+        events_list = [{
+            'id': e.id,
+            'event_type': e.event_type,
+            'severity': e.severity,
+            'message': e.message,
+            'details': e.details,
+            'ip_address': e.ip_address,
+            'device_info': e.device_info,
+            'is_resolved': e.is_resolved,
+            'created_at': e.created_at.isoformat() if e.created_at else None
+        } for e in events]
+
+        return jsonify({'success': True, 'events': events_list})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@sharing_bp.route('/api/analytics/devices', methods=['GET'])
+@login_required
+def analytics_devices():
+    """Get device statistics"""
+    try:
+        from models import DeviceSession
+
+        devices = DeviceSession.query.filter_by(user_id=current_user.id).all()
+
+        devices_list = [{
+            'id': d.id,
+            'device_name': d.device_name,
+            'device_type': d.device_type,
+            'browser': d.browser,
+            'operating_system': d.operating_system,
+            'ip_address': d.ip_address,
+            'device_fingerprint': d.device_fingerprint,
+            'is_trusted': d.is_trusted,
+            'last_used': d.last_used.isoformat() if d.last_used else None
+        } for d in devices]
+
+        return jsonify({
+            'success': True,
+            'devices': devices_list,
+            'trusted_count': len([d for d in devices if d.is_trusted]),
+            'total_count': len(devices)
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@sharing_bp.route('/api/analytics/export', methods=['POST', 'GET'])
+@login_required
+def export_analytics():
+    """Export analytics as CSV or JSON"""
+    format_type = request.args.get('format', 'json')
+    share_id = request.args.get('share_id')
+
+    try:
+        if share_id:
+            shared_file = SharedFile.query.filter_by(id=share_id, owner_id=current_user.id).first()
+            if not shared_file:
+                return jsonify({'error': 'Share not found'}), 404
+
+            logs = AccessLog.query.filter_by(shared_file_id=share_id).all()
+
+            if format_type == 'csv':
+                import csv
+                from io import StringIO
+
+                output = StringIO()
+                writer = csv.writer(output)
+                writer.writerow(['Timestamp', 'Action', 'User ID', 'IP Address', 'Browser', 'Status'])
+
+                for log in logs:
+                    writer.writerow([
+                        log.timestamp,
+                        log.action,
+                        log.user_id or '',
+                        log.ip_address,
+                        log.browser or '',
+                        log.status
+                    ])
+
+                return output.getvalue(), 200, {'Content-Disposition': 'attachment; filename=share-analytics.csv'}
+
+            else:  # JSON
+                data = {
+                    'share_id': share_id,
+                    'file_name': shared_file.encrypted_file.original_filename,
+                    'logs': [{
+                        'timestamp': l.timestamp.isoformat(),
+                        'action': l.action,
+                        'user_id': l.user_id,
+                        'ip_address': l.ip_address,
+                        'browser': l.browser,
+                        'status': l.status
+                    } for l in logs]
+                }
+
+                return jsonify(data)
+
+        return jsonify({'error': 'No share_id provided'}), 400
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@sharing_bp.route('/api/extend', methods=['POST'])
+@login_required
+def extend_share():
+    """Extend share expiration"""
+    try:
+        share_id = request.json.get('share_id')
+        hours = request.json.get('hours', 24)
+
+        shared_file = SharedFile.query.filter_by(id=share_id, owner_id=current_user.id).first()
+        if not shared_file:
+            return jsonify({'success': False, 'message': 'Share not found'}), 404
+
+        shared_file.share_expiry = shared_file.share_expiry + timedelta(hours=int(hours))
+        db.session.commit()
+
+        log_access(share_id, 'share_extended', user_id=current_user.id)
+
+        return jsonify({'success': True, 'new_expiry': shared_file.share_expiry.isoformat()})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@sharing_bp.route('/api/security/resolve/<event_id>', methods=['POST'])
+@login_required
+def resolve_security_event(event_id):
+    """Mark security event as resolved"""
+    try:
+        from models import SecurityEvent
+
+        event = SecurityEvent.query.filter_by(id=event_id, user_id=current_user.id).first()
+        if not event:
+            return jsonify({'success': False, 'message': 'Event not found'}), 404
+
+        event.is_resolved = True
+        event.resolved_at = datetime.utcnow()
+        db.session.commit()
+
+        return jsonify({'success': True})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@sharing_bp.route('/api/security/cleanup', methods=['POST'])
+@login_required
+def cleanup_security_logs():
+    """Clean up old security logs"""
+    try:
+        from models import SecurityLog
+
+        cutoff_date = datetime.utcnow() - timedelta(days=90)
+        deleted = SecurityLog.query.filter(
+            SecurityLog.user_id == current_user.id,
+            SecurityLog.timestamp < cutoff_date
+        ).delete()
+
+        db.session.commit()
+
+        return jsonify({'success': True, 'deleted_count': deleted})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
